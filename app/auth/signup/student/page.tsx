@@ -12,6 +12,23 @@ import { FileText, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 
 export default function StudentSignUp() {
   const router = useRouter()
+  const departmentBranches: Record<string, string[]> = {
+    AI: ['AIR', 'AIEML', 'AIDS', 'AI'],
+    'Artificial Intelligence': ['AIR', 'AIEML', 'AIDS', 'AI'],
+    IoT: ['EAC', 'IoT'],
+    CST: ['CST', 'CSBS'],
+    'Computer Science and Technology': ['CST', 'CSBS'],
+    CSE: ['CSE', 'CSD'],
+    'Electronics & Communication': ['Electronics', 'Telecommunication'],
+    'Electronics Engineering': ['Electronics', 'Telecommunication'],
+    'Civil Engineering': ['Civil Engineering'],
+    'Mechanical Engineering': ['Mechanical Engineering'],
+    'Electrical Engineering': ['Electrical Engineering'],
+    IT: ['IT'],
+    'Engineering Mathematics & Computing (MAC)': ['Engineering Mathematics & Computing (MAC)'],
+    'Chemical Engineering': ['Chemical Engineering'],
+  }
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -19,10 +36,13 @@ export default function StudentSignUp() {
     phoneNumber: '',
     rollNumber: '',
     department: '',
+    branch: '',
     academicYear: '',
     semester: '',
   })
   const [showPassword, setShowPassword] = useState(false)
+
+  const branchOptions = departmentBranches[formData.department] ?? []
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -34,7 +54,12 @@ export default function StudentSignUp() {
   }
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData(prev => {
+      if (name === 'department') {
+        return { ...prev, department: value, branch: '' }
+      }
+      return { ...prev, [name]: value }
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,8 +76,15 @@ export default function StudentSignUp() {
       }
 
       // Validate all fields
-      if (!formData.fullName || !formData.password || !formData.rollNumber || !formData.department || !formData.academicYear || !formData.semester) {
+      if (!formData.fullName || !formData.password || !formData.rollNumber || !formData.department || !formData.branch || !formData.academicYear || !formData.semester) {
         setError('Please fill in all required fields')
+        setLoading(false)
+        return
+      }
+
+      const selectedBranches = departmentBranches[formData.department] || []
+      if (!selectedBranches.includes(formData.branch)) {
+        setError('Please select a valid branch for your department')
         setLoading(false)
         return
       }
@@ -226,12 +258,39 @@ export default function StudentSignUp() {
                       <SelectValue placeholder="SELECT YOUR DEPARTMENT" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Computer Science and Technology">Computer Science and Technology</SelectItem>
+                      <SelectItem value="AI">AI</SelectItem>
                       <SelectItem value="Artificial Intelligence">Artificial Intelligence</SelectItem>
-                      <SelectItem value="Electrical">Electrical Engineering</SelectItem>
-                      <SelectItem value="Mechanical">Mechanical Engineering</SelectItem>
-                      <SelectItem value="Civil">Civil Engineering</SelectItem>
-                      <SelectItem value="Electronics">Electronics Engineering</SelectItem>
+                      <SelectItem value="IoT">IoT</SelectItem>
+                      <SelectItem value="CST">CST</SelectItem>
+                      <SelectItem value="Computer Science and Technology">Computer Science and Technology</SelectItem>
+                      <SelectItem value="Civil Engineering">Civil Engineering</SelectItem>
+                      <SelectItem value="Mechanical Engineering">Mechanical Engineering</SelectItem>
+                      <SelectItem value="Electrical Engineering">Electrical Engineering</SelectItem>
+                      <SelectItem value="CSE">CSE</SelectItem>
+                      <SelectItem value="IT">IT</SelectItem>
+                      <SelectItem value="Electronics & Communication">Electronics & Communication</SelectItem>
+                      <SelectItem value="Engineering Mathematics & Computing (MAC)">Engineering Mathematics & Computing (MAC)</SelectItem>
+                      <SelectItem value="Chemical Engineering">Chemical Engineering</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="branch">Branch *</Label>
+                  <Select
+                    value={formData.branch}
+                    onValueChange={(value) => handleSelectChange('branch', value)}
+                  >
+                    <SelectTrigger
+                      id="branch"
+                      disabled={!formData.department || branchOptions.length === 0}
+                    >
+                      <SelectValue placeholder="SELECT YOUR BRANCH" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branchOptions.map(branch => (
+                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

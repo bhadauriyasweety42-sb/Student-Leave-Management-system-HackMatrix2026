@@ -5,19 +5,19 @@ import { CheckCircle2, FileText, Zap, Clock, Users } from 'lucide-react'
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-purple-50 via-pink-50 to-white">
+    <main className="min-h-screen bg-gradient-to-b from-purple-50 via-pink-50 to-white dark:bg-background">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-purple-200">
+      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-card/80 backdrop-blur-md border-b border-purple-200 dark:border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-500 rounded-lg flex items-center justify-center">
               <FileText className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">LeaveHub</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-foreground">LeaveHub</span>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/auth/login">
-              <Button variant="ghost" className="text-gray-700 hover:text-gray-900 font-medium">Sign In</Button>
+              <Button variant="ghost" className="text-gray-700 hover:text-gray-900 dark:text-muted-foreground dark:hover:text-foreground font-medium">Sign In</Button>
             </Link>
             <Link href="/auth/signup">
               <Button className="bg-purple-400 hover:bg-purple-500 text-white rounded-full px-6 font-medium">Sign Up</Button>
@@ -35,10 +35,10 @@ export default function Home() {
           <div className="inline-block bg-purple-200 text-purple-700 px-4 py-2 rounded-full text-sm font-semibold mb-6">
             Simplified Leave Management
           </div>
-          <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+          <h1 className="text-6xl md:text-7xl font-bold text-gray-900 dark:text-foreground mb-6 leading-tight">
             Smart Leave Management System
           </h1>
-          <p className="text-xl text-gray-600 mb-10 leading-relaxed">
+          <p className="text-xl text-gray-600 dark:text-muted-foreground mb-10 leading-relaxed">
             Streamlined leave requests for MITS students. Submit, track, and get approvals from coordinators and HODs in minutes, not days.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -48,17 +48,17 @@ export default function Home() {
               </Button>
             </Link>
             <Link href="/auth/login">
-              <Button variant="outline" className="border-purple-300 text-purple-700 hover:bg-purple-50 px-8 py-6 text-lg font-semibold rounded-full h-auto">
+              <Button variant="outline" className="border-purple-300 text-purple-700 hover:bg-purple-50 dark:hover:bg-card/50 px-8 py-6 text-lg font-semibold rounded-full h-auto">
                 Sign In
               </Button>
             </Link>
           </div>
           
           {/* Hero Stats */}
-          <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto pt-12 border-t border-gray-200">
+          <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto pt-12 border-t border-gray-200 dark:border-border">
             <div className="text-center">
-              <div className="text-3xl font-bold text-gray-900 mb-2">500+</div>
-              <div className="text-gray-600 text-sm">Active Students</div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-foreground mb-2">500+</div>
+              <div className="text-gray-600 dark:text-muted-foreground text-sm">Active Students</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-gray-900 mb-2">98%</div>
@@ -73,11 +73,11 @@ export default function Home() {
       </section>
 
       {/* How It Works */}
-      <section className="bg-gradient-to-b from-purple-50 to-green-50 border-t border-purple-200">
+      <section className="bg-gradient-to-b from-purple-50 to-green-50 border-t border-purple-200 dark:bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">How it works</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Simple, transparent, and efficient leave management for everyone</p>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-foreground mb-4">How it works</h2>
+            <p className="text-lg text-gray-600 dark:text-muted-foreground max-w-2xl mx-auto">Simple, transparent, and efficient leave management for everyone</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -107,12 +107,12 @@ export default function Home() {
                 color: 'text-yellow-700'
               }
             ].map((step, idx) => (
-              <div key={idx} className="bg-white rounded-lg p-8 border border-purple-200 hover:shadow-lg transition-shadow">
+              <div key={idx} className="bg-white dark:bg-card rounded-lg p-8 border border-purple-200 dark:border-border hover:shadow-lg transition-shadow">
                 <div className={`${step.bg} ${step.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4`}>
                   {step.icon}
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{step.desc}</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-foreground mb-3">{step.title}</h3>
+                <p className="text-gray-600 dark:text-muted-foreground leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>

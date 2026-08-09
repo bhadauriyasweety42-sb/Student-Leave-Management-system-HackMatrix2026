@@ -88,10 +88,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 dark:bg-background">
       {/* Back Button in Top Right */}
       <div className="fixed top-4 right-4 z-50">
-        <Link href="/" className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 bg-white px-4 py-2 rounded-full shadow-md hover:shadow-lg transition-shadow">
+        <Link href="/" className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 bg-white dark:bg-card px-4 py-2 rounded-full shadow-md hover:shadow-lg transition-shadow">
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm font-medium">Back to Home</span>
         </Link>
@@ -106,15 +106,15 @@ export default function Login() {
             <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-500 rounded-lg flex items-center justify-center">
               <FileText className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">LeaveHub</span>
+            <span className="text-2xl font-bold text-gray-900 dark:text-foreground">LeaveHub</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to manage your leave requests</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-foreground mb-2">Welcome Back</h1>
+          <p className="text-gray-600 dark:text-muted-foreground">Sign in to manage your leave requests</p>
         </div>
 
-        <Card className="border-purple-200 shadow-lg bg-white">
+        <Card className="border-purple-200 shadow-lg bg-white dark:bg-card dark:border-border">
           <CardHeader>
-            <CardTitle className="text-purple-900">Sign In</CardTitle>
+            <CardTitle className="text-purple-900 dark:text-primary">Sign In</CardTitle>
             <CardDescription>Select your role and enter your email</CardDescription>
           </CardHeader>
           <CardContent>

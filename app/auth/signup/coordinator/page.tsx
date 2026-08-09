@@ -8,18 +8,34 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { FileText, ArrowLeft, Eye, EyeOff} from 'lucide-react'
+import { FileText, ArrowLeft } from 'lucide-react'
 
 export default function CoordinatorSignUp() {
   const router = useRouter()
+  const departmentBranches: Record<string, string[]> = {
+    AI: ['AIR', 'AIEML', 'AIDS', 'AI'],
+    IoT: ['EAC', 'IoT'],
+    CST: ['CST', 'CSBS'],
+    CSE: ['CSE', 'CSD'],
+    'Electronics & Communication': ['Electronics', 'Telecommunication'],
+    'Civil Engineering': ['Civil Engineering'],
+    'Mechanical Engineering': ['Mechanical Engineering'],
+    'Electrical Engineering': ['Electrical Engineering'],
+    IT: ['IT'],
+    'Engineering Mathematics & Computing (MAC)': ['Engineering Mathematics & Computing (MAC)'],
+    'Chemical Engineering': ['Chemical Engineering'],
+  }
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     password: '',
     phoneNumber: '',
     department: '',
+    branch: '',
   })
-  const[showPassword, setShowPassword] = useState(false) 
+
+  const branchOptions = departmentBranches[formData.department] ?? []
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,7 +47,12 @@ export default function CoordinatorSignUp() {
   }
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData(prev => {
+      if (name === 'department') {
+        return { ...prev, department: value, branch: '' }
+      }
+      return { ...prev, [name]: value }
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,6 +71,19 @@ export default function CoordinatorSignUp() {
       // Validate all fields
       if (!formData.fullName || !formData.password || !formData.department) {
         setError('Please fill in all required fields')
+        setLoading(false)
+        return
+      }
+
+      const selectedBranches = departmentBranches[formData.department] || []
+      if (!formData.branch) {
+        setError('Please select a branch for your department')
+        setLoading(false)
+        return
+      }
+
+      if (!selectedBranches.includes(formData.branch)) {
+        setError('Please select a valid branch for your department')
         setLoading(false)
         return
       }
@@ -160,37 +194,18 @@ export default function CoordinatorSignUp() {
                 </div>
 
                 <div className="space-y-2">
-  <Label htmlFor="password">Password *</Label>
-
-  <div className="relative">
-    <Input
-      id="password"
-      name="password"
-      type={showPassword ? "text" : "password"}
-      placeholder="ENTER STRONG PASSWORD"
-      value={formData.password}
-      onChange={handleChange}
-      required
-      className="pr-10"
-    />
-
-    <button
-      type="button"
-      onClick={() => setShowPassword(!showPassword)}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-    >
-      {showPassword ? (
-        <EyeOff className="h-5 w-5" />
-      ) : (
-        <Eye className="h-5 w-5" />
-      )}
-    </button>
-  </div>
-
-  <p className="text-xs text-gray-500">
-    Min 8 chars, must include letters, number & special character (!@#$%^&*)
-  </p>
-</div>
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="ENTER STRONG PASSWORD"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
+                  <p className="text-xs text-gray-500">Min 8 chars, must include letters, number & special character (!@#$%^&*)</p>
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="phoneNumber">Phone Number</Label>
@@ -211,12 +226,37 @@ export default function CoordinatorSignUp() {
                       <SelectValue placeholder="SELECT YOUR DEPARTMENT" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Computer Science and Technology">Computer Science and Technology</SelectItem>
-                      <SelectItem value="Artificial Intelligence">Artificial Intelligence</SelectItem>
-                      <SelectItem value="Electrical">Electrical Engineering</SelectItem>
-                      <SelectItem value="Mechanical">Mechanical Engineering</SelectItem>
-                      <SelectItem value="Civil">Civil Engineering</SelectItem>
-                      <SelectItem value="Electronics">Electronics Engineering</SelectItem>
+                      <SelectItem value="AI">AI</SelectItem>
+                      <SelectItem value="IoT">IoT</SelectItem>
+                      <SelectItem value="CST">CST</SelectItem>
+                      <SelectItem value="Civil Engineering">Civil Engineering</SelectItem>
+                      <SelectItem value="Mechanical Engineering">Mechanical Engineering</SelectItem>
+                      <SelectItem value="Electrical Engineering">Electrical Engineering</SelectItem>
+                      <SelectItem value="CSE">CSE</SelectItem>
+                      <SelectItem value="IT">IT</SelectItem>
+                      <SelectItem value="Electronics & Communication">Electronics & Communication</SelectItem>
+                      <SelectItem value="Engineering Mathematics & Computing (MAC)">Engineering Mathematics & Computing (MAC)</SelectItem>
+                      <SelectItem value="Chemical Engineering">Chemical Engineering</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="branch">Branch *</Label>
+                  <Select
+                    value={formData.branch}
+                    onValueChange={(value) => handleSelectChange('branch', value)}
+                  >
+                    <SelectTrigger
+                      id="branch"
+                      disabled={!formData.department || branchOptions.length === 0}
+                    >
+                      <SelectValue placeholder="SELECT YOUR BRANCH" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branchOptions.map(branch => (
+                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
