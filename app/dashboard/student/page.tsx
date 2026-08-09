@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -10,88 +10,230 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { FileText, LogOut, Plus, CheckCircle2, Clock, XCircle, ArrowLeft } from 'lucide-react'
+import { xanoFetch, clearAuthToken, getAuthToken } from '@/lib/xano'
 import Link from 'next/link'
 
 export default function StudentDashboard() {
   const router = useRouter()
-  const [currentUser, setCurrentUser] = useState<any>(null)
   const [studentData, setStudentData] = useState<any>(null)
   const [requests, setRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [newRequest, setNewRequest] = useState({
     reason: '',
+    leaveType: '',
     numberOfDays: '',
     startDate: '',
     endDate: '',
   })
+  const [attachment, setAttachment] = useState<File | null>(null)
   const [showNewRequest, setShowNewRequest] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  function mapStatus(status: string | undefined) {
+    // Normalize to canonical statuses used in UI logic
+    switch (status) {
+      case 'pending_coordinator':
+        return 'pending_coordinator'
+      case 'pending_hod':
+        return 'pending_hod'
+      case 'approved':
+        return 'approved'
+      case 'rejected_by_coordinator':
+      case 'rejected_by_hod':
+        return 'rejected'
+      default:
+        return status || 'pending_coordinator'
+    }
+  }
+
+  function statusLabel(status: string) {
+    switch (status) {
+      case 'pending_coordinator':
+        return 'Pending Coordinator Approval'
+      case 'pending_hod':
+        return 'Pending HOD Approval'
+      case 'approved':
+        return 'Approved'
+      case 'rejected':
+        return 'Rejected'
+      default:
+        return status
+    }
+  }
+
+  function mapLeaveRequest(request: any) {
+    return {
+      ...request,
+      id: request.id ?? request.leave_request_id ?? request.request_id,
+      studentName: request.studentName ?? request.student_name ?? request.name ?? request.user_name,
+      studentEmail: request.studentEmail ?? request.student_email ?? request.email ?? request.user_email,
+      numberOfDays: request.total_days ?? request.totalDays ?? request.numberOfDays ?? request.days ?? 0,
+      startDate: request.from_date ?? request.startDate ?? request.start_date,
+      endDate: request.to_date ?? request.endDate ?? request.end_date,
+      createdAt: request.created_at ?? request.createdAt ?? request.created_at ?? new Date().toISOString(),
+      status: mapStatus(request.status),
+    }
+  }
 
   useEffect(() => {
-    const user = localStorage.getItem('currentUser')
-    if (!user || JSON.parse(user).role !== 'student') {
-      router.push('/auth/login')
-      return
+    const init = async () => {
+      // Ensure token exists
+      const token = getAuthToken()
+      if (!token) {
+        router.push('/auth/login')
+        return
+      }
+
+      try {
+        setLoading(true)
+
+        // Fetch profile
+        const profile: any = await xanoFetch('/auth/me', { method: 'GET' }, 'auth')
+        if (!profile || profile.role !== 'student') {
+          clearAuthToken()
+          router.push('/auth/login')
+          return
+        }
+
+        setStudentData(profile)
+
+        // Fetch leave history for this student (provide required status param)
+        const leavesRes: any = await xanoFetch('/me?status=all', { method: 'GET' }, 'leave')
+        const normalizedLeaves = Array.isArray(leavesRes)
+          ? leavesRes
+          : Array.isArray(leavesRes?.items)
+            ? leavesRes.items
+            : Array.isArray(leavesRes?.data)
+              ? leavesRes.data
+              : Array.isArray(leavesRes?.leaves)
+                ? leavesRes.leaves
+                : []
+        const mapped = normalizedLeaves.map(mapLeaveRequest)
+        setRequests(mapped)
+      } catch (err: any) {
+        setError(err?.message || 'Failed to load data')
+      } finally {
+        setLoading(false)
+      }
     }
 
-    setCurrentUser(JSON.parse(user))
-
-    // Fetch student data
-    const userData = localStorage.getItem(JSON.parse(user).email)
-    if (userData) {
-      setStudentData(JSON.parse(userData))
-    }
-
-    // Fetch requests
-    const savedRequests = localStorage.getItem('leaveRequests')
-    if (savedRequests) {
-      const allRequests = JSON.parse(savedRequests)
-      const userRequests = allRequests.filter((req: any) => req.studentEmail === JSON.parse(user).email)
-      setRequests(userRequests)
-    }
-
-    setLoading(false)
+    init()
   }, [router])
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser')
-    router.push('/auth/login')
-  }
-
-  const handleNewRequest = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    const request = {
-      id: Date.now().toString(),
-      studentEmail: currentUser.email,
-      studentName: studentData?.fullName,
-      reason: newRequest.reason,
-      numberOfDays: parseInt(newRequest.numberOfDays),
-      startDate: newRequest.startDate,
-      endDate: newRequest.endDate,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      coordinatorApproval: null,
-      hodApproval: null,
+    const doLogout = async () => {
+      try {
+        await xanoFetch('/auth/logout', { method: 'POST' }, 'auth')
+      } catch (err) {
+        // ignore logout errors
+      } finally {
+        clearAuthToken()
+        router.push('/auth/login')
+      }
     }
 
-    const savedRequests = localStorage.getItem('leaveRequests') || '[]'
-    const allRequests = JSON.parse(savedRequests)
-    allRequests.push(request)
-    localStorage.setItem('leaveRequests', JSON.stringify(allRequests))
+    doLogout()
+  }
 
-    setRequests([...requests, request])
-    setNewRequest({ reason: '', numberOfDays: '', startDate: '', endDate: '' })
-    setShowNewRequest(false)
+  const handleNewRequest = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    console.groupCollapsed('[apply-debug] submitting new leave')
+    console.log('newRequest state:', newRequest)
+    console.log('attachment present:', !!attachment)
+    console.groupEnd()
+    if (!newRequest.startDate || !newRequest.endDate || !newRequest.numberOfDays || !newRequest.reason) {
+      setError('Please fill all required fields')
+      return
+    }
+
+    // basic date validation
+    if (new Date(newRequest.startDate) > new Date(newRequest.endDate)) {
+      setError('Start date cannot be after end date')
+      return
+    }
+
+    // validate numberOfDays matches inclusive date range
+    try {
+      const from = new Date(newRequest.startDate)
+      const to = new Date(newRequest.endDate)
+      const diffMs = to.getTime() - from.getTime()
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1
+      const provided = Number(newRequest.numberOfDays)
+      if (!Number.isFinite(provided) || provided <= 0) {
+        setError('Number of days must be a positive number')
+        return
+      }
+      if (provided !== diffDays) {
+        setError(`Number of days (${provided}) does not match selected date range (${diffDays} days)`) 
+        return
+      }
+    } catch (err) {
+      // ignore parse errors — validation above covers most cases
+    }
+
+    setLoading(true)
+    try {
+      const payload = {
+        leave_type: newRequest.leaveType,
+        reason: newRequest.reason,
+        from_date: newRequest.startDate,
+        to_date: newRequest.endDate,
+      }
+
+      const body = attachment
+        ? (() => {
+            const formData = new FormData()
+            formData.append('leave_type', payload.leave_type)
+            formData.append('reason', payload.reason)
+            formData.append('from_date', payload.from_date)
+            formData.append('to_date', payload.to_date)
+            formData.append('attachment', attachment)
+            return formData
+          })()
+        : JSON.stringify(payload)
+
+      await xanoFetch('/apply', {
+        method: 'POST',
+        body,
+      }, 'leave')
+
+      // Refresh leave history (required status param)
+      const leavesRes: any = await xanoFetch('/me?status=all', { method: 'GET' }, 'leave')
+      const normalizedLeaves = Array.isArray(leavesRes)
+        ? leavesRes
+        : Array.isArray(leavesRes?.items)
+          ? leavesRes.items
+          : Array.isArray(leavesRes?.data)
+            ? leavesRes.data
+            : Array.isArray(leavesRes?.leaves)
+              ? leavesRes.leaves
+              : []
+      const mapped = normalizedLeaves.map(mapLeaveRequest)
+      setRequests(mapped)
+
+      setNewRequest({ reason: '', leaveType: '', numberOfDays: '', startDate: '', endDate: '' })
+      setAttachment(null)
+      setShowNewRequest(false)
+      setSuccess('Leave request submitted successfully and sent to Coordinator.')
+    } catch (err: any) {
+      setError(err?.message || 'Failed to submit request')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'hod_approved':
+      case 'approved':
         return <CheckCircle2 className="w-5 h-5 text-green-600" />
-      case 'coordinator_approved':
+      case 'pending_hod':
         return <Clock className="w-5 h-5 text-yellow-600" />
       case 'rejected':
         return <XCircle className="w-5 h-5 text-red-600" />
+      case 'pending_coordinator':
       default:
         return <Clock className="w-5 h-5 text-blue-600" />
     }
@@ -99,12 +241,13 @@ export default function StudentDashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'hod_approved':
+      case 'approved':
         return 'bg-green-50 border-green-200'
-      case 'coordinator_approved':
+      case 'pending_hod':
         return 'bg-yellow-50 border-yellow-200'
       case 'rejected':
         return 'bg-red-50 border-red-200'
+      case 'pending_coordinator':
       default:
         return 'bg-blue-50 border-blue-200'
     }
@@ -147,6 +290,12 @@ export default function StudentDashboard() {
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {studentData?.fullName || 'Student'}</h2>
           <p className="text-gray-600">Manage and track your leave requests here</p>
         </div>
+
+        {success && (
+          <div className="mb-4 p-3 bg-green-50 text-green-800 rounded">
+            {success}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>
@@ -216,6 +365,12 @@ export default function StudentDashboard() {
                   </DialogHeader>
 
                   <form onSubmit={handleNewRequest} className="space-y-4">
+                    {error && (
+                      <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                        {error}
+                      </div>
+                    )}
+                    
                     <div className="space-y-2">
                       <Label htmlFor="reason">Reason for Leave *</Label>
                       <Input
@@ -224,6 +379,26 @@ export default function StudentDashboard() {
                         value={newRequest.reason}
                         onChange={(e) => setNewRequest({ ...newRequest, reason: e.target.value })}
                         required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="leaveType">Leave Type *</Label>
+                      <Input
+                        id="leaveType"
+                        placeholder="Sick Leave, Casual Leave, etc."
+                        value={newRequest.leaveType}
+                        onChange={(e) => setNewRequest({ ...newRequest, leaveType: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="attachment">Attachment (optional)</Label>
+                      <Input
+                        id="attachment"
+                        type="file"
+                        onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
                       />
                     </div>
 
@@ -290,8 +465,8 @@ export default function StudentDashboard() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             {getStatusIcon(request.status)}
-                            <CardTitle className="text-lg capitalize">
-                              {request.status.replace('_', ' ')}
+                            <CardTitle className="text-lg">
+                              {statusLabel(request.status)}
                             </CardTitle>
                           </div>
                           <CardDescription>{request.reason}</CardDescription>
