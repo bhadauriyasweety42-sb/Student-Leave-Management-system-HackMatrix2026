@@ -8,16 +8,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { xanoFetch, setAuthToken } from '@/lib/xano'
 import { FileText, ArrowLeft, Eye, EyeOff} from 'lucide-react'
 
 export default function CoordinatorSignUp() {
   const router = useRouter()
   const [formData, setFormData] = useState({
-    fullName: '',
+    name: '',
     email: '',
     password: '',
-    phoneNumber: '',
-    department: '',
+    department_id: '',
+    branch_id: '',
+    section_id: '',
   })
   const[showPassword, setShowPassword] = useState(false) 
 
@@ -48,7 +50,7 @@ export default function CoordinatorSignUp() {
       }
 
       // Validate all fields
-      if (!formData.fullName || !formData.password || !formData.department) {
+      if (!formData.name || !formData.email || !formData.password || !formData.department_id || !formData.branch_id || !formData.section_id) {
         setError('Please fill in all required fields')
         setLoading(false)
         return
@@ -62,23 +64,49 @@ export default function CoordinatorSignUp() {
         return
       }
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: 'coordinator',
+        department_id: Number(formData.department_id),
+        branch_id: Number(formData.branch_id),
+        section_id: Number(formData.section_id),
+      }
 
-      // Save coordinator data to localStorage
-      localStorage.setItem(formData.email, JSON.stringify({
-        ...formData,
-        role: 'coordinator'
-      }))
+      const response: any = await xanoFetch('/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }, 'auth')
+
+      const parsedResponse = typeof response === 'string'
+        ? (() => {
+            try { return JSON.parse(response) } catch { return null }
+          })()
+        : response
+
+      const authToken = parsedResponse?.authToken
+        ?? parsedResponse?.data?.authToken
+        ?? parsedResponse?.token
+        ?? parsedResponse?.data?.token
+        ?? parsedResponse?.access_token
+        ?? parsedResponse?.data?.access_token
+
+      if (authToken) {
+        setAuthToken(authToken)
+        const profile: any = await xanoFetch('/auth/me', { method: 'GET' }, 'auth')
+        if (profile?.role === 'coordinator') {
+          router.push('/dashboard/coordinator')
+          return
+        }
+      }
 
       setSuccess(true)
-      
-      // Redirect to login after 2 seconds
       setTimeout(() => {
         router.push('/auth/login')
       }, 2000)
-    } catch (err) {
-      setError('An error occurred. Please try again.')
+    } catch (err: any) {
+      setError(err?.message || 'Signup failed')
     } finally {
       setLoading(false)
     }
@@ -133,13 +161,13 @@ export default function CoordinatorSignUp() {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Label htmlFor="name">Full Name *</Label>
                   <Input
-                    id="fullName"
-                    name="fullName"
+                    id="name"
+                    name="name"
                     type="text"
                     placeholder="ENTER YOUR FULL NAME"
-                    value={formData.fullName}
+                    value={formData.name}
                     onChange={handleChange}
                     required
                   />
@@ -193,30 +221,50 @@ export default function CoordinatorSignUp() {
 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phoneNumber">Phone Number</Label>
-                  <Input
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    type="tel"
-                    placeholder="ENTER YOUR PHONE NUMBER"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department *</Label>
-                  <Select value={formData.department} onValueChange={(value) => handleSelectChange('department', value)}>
-                    <SelectTrigger id="department">
+                  <Label htmlFor="department_id">Department *</Label>
+                  <Select value={formData.department_id} onValueChange={(value) => handleSelectChange('department_id', value)}>
+                    <SelectTrigger id="department_id">
                       <SelectValue placeholder="SELECT YOUR DEPARTMENT" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Computer Science and Technology">Computer Science and Technology</SelectItem>
-                      <SelectItem value="Artificial Intelligence">Artificial Intelligence</SelectItem>
-                      <SelectItem value="Electrical">Electrical Engineering</SelectItem>
-                      <SelectItem value="Mechanical">Mechanical Engineering</SelectItem>
-                      <SelectItem value="Civil">Civil Engineering</SelectItem>
-                      <SelectItem value="Electronics">Electronics Engineering</SelectItem>
+                      <SelectItem value="1">Computer Science and Technology</SelectItem>
+                      <SelectItem value="2">Artificial Intelligence</SelectItem>
+                      <SelectItem value="3">Electrical Engineering</SelectItem>
+                      <SelectItem value="4">Mechanical Engineering</SelectItem>
+                      <SelectItem value="5">Civil Engineering</SelectItem>
+                      <SelectItem value="6">Electronics Engineering</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="branch_id">Branch *</Label>
+                  <Select value={formData.branch_id} onValueChange={(value) => handleSelectChange('branch_id', value)}>
+                    <SelectTrigger id="branch_id">
+                      <SelectValue placeholder="SELECT YOUR BRANCH" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Computer Science</SelectItem>
+                      <SelectItem value="2">Artificial Intelligence</SelectItem>
+                      <SelectItem value="3">Electrical</SelectItem>
+                      <SelectItem value="4">Mechanical</SelectItem>
+                      <SelectItem value="5">Civil</SelectItem>
+                      <SelectItem value="6">Electronics</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="section_id">Section *</Label>
+                  <Select value={formData.section_id} onValueChange={(value) => handleSelectChange('section_id', value)}>
+                    <SelectTrigger id="section_id">
+                      <SelectValue placeholder="SELECT YOUR SECTION" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">A</SelectItem>
+                      <SelectItem value="2">B</SelectItem>
+                      <SelectItem value="3">C</SelectItem>
+                      <SelectItem value="4">D</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

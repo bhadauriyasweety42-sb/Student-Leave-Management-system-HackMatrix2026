@@ -9,18 +9,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FileText, ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { xanoFetch, setAuthToken } from '@/lib/xano'
 
 export default function StudentSignUp() {
   const router = useRouter()
   const [formData, setFormData] = useState({
-    fullName: '',
+    name: '',
     email: '',
     password: '',
-    phoneNumber: '',
-    rollNumber: '',
-    department: '',
-    academicYear: '',
-    semester: '',
+    roll_number: '',
+    department_id: '',
+    branch_id: '',
+    section_id: '',
   })
   const [showPassword, setShowPassword] = useState(false)
 
@@ -51,7 +51,7 @@ export default function StudentSignUp() {
       }
 
       // Validate all fields
-      if (!formData.fullName || !formData.password || !formData.rollNumber || !formData.department || !formData.academicYear || !formData.semester) {
+      if (!formData.name || !formData.password || !formData.roll_number || !formData.department_id || !formData.branch_id || !formData.section_id) {
         setError('Please fill in all required fields')
         setLoading(false)
         return
@@ -65,23 +65,50 @@ export default function StudentSignUp() {
         return
       }
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: 'student',
+        roll_number: formData.roll_number,
+        department_id: Number(formData.department_id),
+        branch_id: Number(formData.branch_id),
+        section_id: Number(formData.section_id),
+      }
 
-      // Save student data to localStorage
-      localStorage.setItem(formData.email, JSON.stringify({
-        ...formData,
-        role: 'student'
-      }))
+      const response: any = await xanoFetch('/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }, 'auth')
+
+      const parsedResponse = typeof response === 'string'
+        ? (() => {
+            try { return JSON.parse(response) } catch { return null }
+          })()
+        : response
+
+      const authToken = parsedResponse?.authToken
+        ?? parsedResponse?.data?.authToken
+        ?? parsedResponse?.token
+        ?? parsedResponse?.data?.token
+        ?? parsedResponse?.access_token
+        ?? parsedResponse?.data?.access_token
+
+      if (authToken) {
+        setAuthToken(authToken)
+        const profile: any = await xanoFetch('/auth/me', { method: 'GET' }, 'auth')
+        if (profile?.role === 'student') {
+          router.push('/dashboard/student')
+          return
+        }
+      }
 
       setSuccess(true)
-      
-      // Redirect to login after 2 seconds
       setTimeout(() => {
         router.push('/auth/login')
       }, 2000)
-    } catch (err) {
-      setError('An error occurred. Please try again.')
+    } catch (err: any) {
+      setError(err?.message || 'Signup failed')
     } finally {
       setLoading(false)
     }
@@ -136,13 +163,13 @@ export default function StudentSignUp() {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Label htmlFor="name">Full Name *</Label>
                   <Input
-                    id="fullName"
-                    name="fullName"
+                    id="name"
+                    name="name"
                     type="text"
                     placeholder="ENTER YOUR FULL NAME"
-                    value={formData.fullName}
+                    value={formData.name}
                     onChange={handleChange}
                     required
                   />
@@ -195,77 +222,63 @@ export default function StudentSignUp() {
   </p>
 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Label htmlFor="roll_number">Roll Number *</Label>
                   <Input
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    type="tel"
-                    placeholder="ENTER YOUR PHONE NUMBER"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="rollNumber">Roll Number *</Label>
-                  <Input
-                    id="rollNumber"
-                    name="rollNumber"
+                    id="roll_number"
+                    name="roll_number"
                     type="text"
                     placeholder="ENTER YOUR ROLL NUMBER"
-                    value={formData.rollNumber}
+                    value={formData.roll_number}
                     onChange={handleChange}
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department *</Label>
-                  <Select value={formData.department} onValueChange={(value) => handleSelectChange('department', value)}>
-                    <SelectTrigger id="department">
+                  <Label htmlFor="department_id">Department *</Label>
+                  <Select value={formData.department_id} onValueChange={(value) => handleSelectChange('department_id', value)}>
+                    <SelectTrigger id="department_id">
                       <SelectValue placeholder="SELECT YOUR DEPARTMENT" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Computer Science and Technology">Computer Science and Technology</SelectItem>
-                      <SelectItem value="Artificial Intelligence">Artificial Intelligence</SelectItem>
-                      <SelectItem value="Electrical">Electrical Engineering</SelectItem>
-                      <SelectItem value="Mechanical">Mechanical Engineering</SelectItem>
-                      <SelectItem value="Civil">Civil Engineering</SelectItem>
-                      <SelectItem value="Electronics">Electronics Engineering</SelectItem>
+                      <SelectItem value="1">Computer Science and Technology</SelectItem>
+                      <SelectItem value="2">Artificial Intelligence</SelectItem>
+                      <SelectItem value="3">Electrical Engineering</SelectItem>
+                      <SelectItem value="4">Mechanical Engineering</SelectItem>
+                      <SelectItem value="5">Civil Engineering</SelectItem>
+                      <SelectItem value="6">Electronics Engineering</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="academicYear">Academic Year *</Label>
-                  <Select value={formData.academicYear} onValueChange={(value) => handleSelectChange('academicYear', value)}>
-                    <SelectTrigger id="academicYear">
-                      <SelectValue placeholder="SELECT ACADEMIC YEAR" />
+                  <Label htmlFor="branch_id">Branch *</Label>
+                  <Select value={formData.branch_id} onValueChange={(value) => handleSelectChange('branch_id', value)}>
+                    <SelectTrigger id="branch_id">
+                      <SelectValue placeholder="SELECT YOUR BRANCH" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1st Year">1st Year</SelectItem>
-                      <SelectItem value="2nd Year">2nd Year</SelectItem>
-                      <SelectItem value="3rd Year">3rd Year</SelectItem>
-                      <SelectItem value="4th Year">4th Year</SelectItem>
+                      <SelectItem value="1">Computer Science</SelectItem>
+                      <SelectItem value="2">Artificial Intelligence</SelectItem>
+                      <SelectItem value="3">Electrical</SelectItem>
+                      <SelectItem value="4">Mechanical</SelectItem>
+                      <SelectItem value="5">Civil</SelectItem>
+                      <SelectItem value="6">Electronics</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="semester">Semester *</Label>
-                  <Select value={formData.semester} onValueChange={(value) => handleSelectChange('semester', value)}>
-                    <SelectTrigger id="semester">
-                      <SelectValue placeholder="SELECT SEMESTER" />
+                  <Label htmlFor="section_id">Section *</Label>
+                  <Select value={formData.section_id} onValueChange={(value) => handleSelectChange('section_id', value)}>
+                    <SelectTrigger id="section_id">
+                      <SelectValue placeholder="SELECT YOUR SECTION" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Semester 1</SelectItem>
-                      <SelectItem value="2">Semester 2</SelectItem>
-                      <SelectItem value="3">Semester 3</SelectItem>
-                      <SelectItem value="4">Semester 4</SelectItem>
-                      <SelectItem value="5">Semester 5</SelectItem>
-                      <SelectItem value="6">Semester 6</SelectItem>
-                      <SelectItem value="7">Semester 7</SelectItem>
-                      <SelectItem value="8">Semester 8</SelectItem>
+                      <SelectItem value="1">A</SelectItem>
+                      <SelectItem value="2">B</SelectItem>
+                      <SelectItem value="3">C</SelectItem>
+                      <SelectItem value="4">D</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -71,10 +71,38 @@ export default function StudentDashboard() {
       studentEmail: request.studentEmail ?? request.student_email ?? request.email ?? request.user_email,
       numberOfDays: request.total_days ?? request.totalDays ?? request.numberOfDays ?? request.days ?? 0,
       startDate: request.from_date ?? request.startDate ?? request.start_date,
-      endDate: request.to_date ?? request.endDate ?? request.end_date,
+      endDate: request.to_date ?? request.endDate ?? request.to_date ?? request.end_date,
       createdAt: request.created_at ?? request.createdAt ?? request.created_at ?? new Date().toISOString(),
-      status: mapStatus(request.status),
+      status: mapStatus(request.final_status ?? request.status),
     }
+  }
+
+  function normalizeLeavesResponse(leavesRes: any) {
+    return Array.isArray(leavesRes)
+      ? leavesRes
+      : Array.isArray(leavesRes?.items)
+        ? leavesRes.items
+        : Array.isArray(leavesRes?.data?.items)
+          ? leavesRes.data.items
+          : Array.isArray(leavesRes?.data)
+            ? leavesRes.data
+            : Array.isArray(leavesRes?.leaves)
+              ? leavesRes.leaves
+              : []
+  }
+
+  async function loadStudentLeaves() {
+    const statuses = ['pending_coordinator', 'pending_hod', 'approved', 'rejected']
+    const leavesResponses = await Promise.all(
+      statuses.map((status) => xanoFetch(`/me?status=${status}`, { method: 'GET' }, 'leave'))
+    )
+
+    const allLeaves = leavesResponses.flatMap((leavesRes: any) => normalizeLeavesResponse(leavesRes))
+    const mappedLeaves = allLeaves.map(mapLeaveRequest)
+    const uniqueLeaves = Array.from(
+      new Map(mappedLeaves.filter((request) => request?.id).map((request) => [request.id, request])).values()
+    )
+    setRequests(uniqueLeaves)
   }
 
   useEffect(() => {
@@ -98,20 +126,7 @@ export default function StudentDashboard() {
         }
 
         setStudentData(profile)
-
-        // Fetch leave history for this student (provide required status param)
-        const leavesRes: any = await xanoFetch('/me?status=all', { method: 'GET' }, 'leave')
-        const normalizedLeaves = Array.isArray(leavesRes)
-          ? leavesRes
-          : Array.isArray(leavesRes?.items)
-            ? leavesRes.items
-            : Array.isArray(leavesRes?.data)
-              ? leavesRes.data
-              : Array.isArray(leavesRes?.leaves)
-                ? leavesRes.leaves
-                : []
-        const mapped = normalizedLeaves.map(mapLeaveRequest)
-        setRequests(mapped)
+        await loadStudentLeaves()
       } catch (err: any) {
         setError(err?.message || 'Failed to load data')
       } finally {
@@ -200,19 +215,8 @@ export default function StudentDashboard() {
         body,
       }, 'leave')
 
-      // Refresh leave history (required status param)
-      const leavesRes: any = await xanoFetch('/me?status=all', { method: 'GET' }, 'leave')
-      const normalizedLeaves = Array.isArray(leavesRes)
-        ? leavesRes
-        : Array.isArray(leavesRes?.items)
-          ? leavesRes.items
-          : Array.isArray(leavesRes?.data)
-            ? leavesRes.data
-            : Array.isArray(leavesRes?.leaves)
-              ? leavesRes.leaves
-              : []
-      const mapped = normalizedLeaves.map(mapLeaveRequest)
-      setRequests(mapped)
+      // Refresh leave history after applying a new request
+      await loadStudentLeaves()
 
       setNewRequest({ reason: '', leaveType: '', numberOfDays: '', startDate: '', endDate: '' })
       setAttachment(null)
@@ -313,7 +317,7 @@ export default function StudentDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-600">
-                {requests.filter(r => r.status === 'pending').length}
+                {requests.filter((r) => r.status === 'pending_coordinator' || r.status === 'pending_hod').length}
               </div>
             </CardContent>
           </Card>
@@ -324,7 +328,7 @@ export default function StudentDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-yellow-600">
-                {requests.filter(r => r.status === 'coordinator_approved').length}
+                {requests.filter((r) => r.status === 'pending_hod').length}
               </div>
             </CardContent>
           </Card>
@@ -335,7 +339,7 @@ export default function StudentDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">
-                {requests.filter(r => r.status === 'hod_approved').length}
+                {requests.filter((r) => r.status === 'approved').length}
               </div>
             </CardContent>
           </Card>

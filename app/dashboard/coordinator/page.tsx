@@ -10,70 +10,104 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { FileText, LogOut, CheckCircle2, XCircle, Clock, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { xanoFetch, getAuthToken, clearAuthToken } from '@/lib/xano'
 
 export default function CoordinatorDashboard() {
   const router = useRouter()
-  const [currentUser, setCurrentUser] = useState<any>(null)
   const [requests, setRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedRequest, setSelectedRequest] = useState<any>(null)
   const [comment, setComment] = useState('')
   const [action, setAction] = useState<'approve' | 'reject'>('approve')
 
+  function normalizeLeavesResponse(leavesRes: any) {
+    return Array.isArray(leavesRes)
+      ? leavesRes
+      : Array.isArray(leavesRes?.items)
+        ? leavesRes.items
+        : Array.isArray(leavesRes?.data?.items)
+          ? leavesRes.data.items
+          : Array.isArray(leavesRes?.data)
+            ? leavesRes.data
+            : Array.isArray(leavesRes?.leaves)
+              ? leavesRes.leaves
+              : []
+  }
+
+  function mapCoordinatorRequest(request: any) {
+    return {
+      ...request,
+      id: request.id ?? request.leave_request_id ?? request.request_id,
+      studentName: request.studentName ?? request.student_name ?? request.name ?? request.user_name,
+      studentEmail: request.studentEmail ?? request.student_email ?? request.email ?? request.user_email,
+      numberOfDays: request.total_days ?? request.totalDays ?? request.numberOfDays ?? request.days ?? 0,
+      startDate: request.from_date ?? request.startDate ?? request.start_date,
+      endDate: request.to_date ?? request.endDate ?? request.to_date ?? request.end_date,
+      createdAt: request.created_at ?? request.createdAt ?? new Date().toISOString(),
+      status: request.final_status ?? request.status,
+    }
+  }
+
   useEffect(() => {
-    const user = localStorage.getItem('currentUser')
-    if (!user || JSON.parse(user).role !== 'coordinator') {
-      router.push('/auth/login')
-      return
+    const init = async () => {
+      const token = getAuthToken()
+      if (!token) {
+        router.push('/auth/login')
+        return
+      }
+
+      try {
+        setLoading(true)
+        // Verify user role
+        const profile: any = await xanoFetch('/auth/me', { method: 'GET' }, 'auth')
+        if (!profile || profile.role !== 'coordinator') {
+          clearAuthToken()
+          router.push('/auth/login')
+          return
+        }
+
+        const leavesRes: any = await xanoFetch('/coordinator/pending', { method: 'GET' }, 'leave')
+        const normalizedLeaves = normalizeLeavesResponse(leavesRes)
+        const mapped = normalizedLeaves.map(mapCoordinatorRequest)
+        setRequests(mapped)
+      } catch (err) {
+        console.error(err)
+        clearAuthToken()
+        router.push('/auth/login')
+      } finally {
+        setLoading(false)
+      }
     }
 
-    setCurrentUser(JSON.parse(user))
-
-    // Fetch pending requests
-    const savedRequests = localStorage.getItem('leaveRequests')
-    if (savedRequests) {
-      const allRequests = JSON.parse(savedRequests)
-      const pendingRequests = allRequests.filter((req: any) => req.status === 'pending')
-      setRequests(pendingRequests)
-    }
-
-    setLoading(false)
+    init()
   }, [router])
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser')
+    clearAuthToken()
     router.push('/auth/login')
   }
 
-  const handleApproval = () => {
+  const handleApproval = async () => {
     if (!selectedRequest) return
 
-    const savedRequests = localStorage.getItem('leaveRequests') || '[]'
-    const allRequests = JSON.parse(savedRequests)
+    try {
+      const endpoint = `/coordinator/${action}/${selectedRequest.id}`
+      await xanoFetch(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({ coordinator_remark: comment }),
+      }, 'leave')
 
-    const updatedRequests = allRequests.map((req: any) => {
-      if (req.id === selectedRequest.id) {
-        return {
-          ...req,
-          status: action === 'approve' ? 'coordinator_approved' : 'rejected',
-          coordinatorApproval: {
-            decision: action,
-            comments: comment,
-            timestamp: new Date().toISOString(),
-            coordinatorEmail: currentUser.email,
-          },
-        }
-      }
-      return req
-    })
-
-    localStorage.setItem('leaveRequests', JSON.stringify(updatedRequests))
-
-    // Remove from pending
-    setRequests(requests.filter(r => r.id !== selectedRequest.id))
-    setSelectedRequest(null)
-    setComment('')
-    setAction('approve')
+      const leavesRes: any = await xanoFetch('/coordinator/pending', { method: 'GET' }, 'leave')
+      const normalizedLeaves = normalizeLeavesResponse(leavesRes)
+      const mapped = normalizedLeaves.map(mapCoordinatorRequest)
+      setRequests(mapped)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSelectedRequest(null)
+      setComment('')
+      setAction('approve')
+    }
   }
 
   if (loading) {
