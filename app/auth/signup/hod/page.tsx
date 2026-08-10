@@ -28,16 +28,12 @@ export default function HODSignUp() {
   }
 
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    phoneNumber: '',
-    department: '',
-    branch: '',
-  })
+  name: '',
+  email: '',
+  password: '',
+  department_id: '',
+})
   const [showPassword, setShowPassword] = useState(false)
-
-  const branchOptions = departmentBranches[formData.department] ?? []
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -47,16 +43,9 @@ export default function HODSignUp() {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => {
-      if (name === 'department') {
-        return { ...prev, department: value, branch: '' }
-      }
-      return { ...prev, [name]: value }
-    })
-  }
-
+const handleSelectChange = (name: string, value: string) => {
+  setFormData(prev => ({ ...prev, [name]: value }))
+}
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -77,18 +66,7 @@ export default function HODSignUp() {
         return
       }
 
-      const selectedBranches = departmentBranches[formData.department] || []
-      if (!formData.branch) {
-        setError('Please select a branch for your department')
-        setLoading(false)
-        return
-      }
-
-      if (!selectedBranches.includes(formData.branch)) {
-        setError('Please select a valid branch for your department')
-        setLoading(false)
-        return
-      }
+  
 
       // Validate password
       const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/
@@ -252,49 +230,32 @@ export default function HODSignUp() {
   </p>
 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="department_id">Department *</Label>
-                  <Select value={formData.department_id} onValueChange={(value) => handleSelectChange('department_id', value)}>
-                    <SelectTrigger id="department_id">
-                      <SelectValue placeholder="SELECT YOUR DEPARTMENT" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AI">AI</SelectItem>
-                      <SelectItem value="IoT">IoT</SelectItem>
-                      <SelectItem value="CST">CST</SelectItem>
-                      <SelectItem value="Civil Engineering">Civil Engineering</SelectItem>
-                      <SelectItem value="Mechanical Engineering">Mechanical Engineering</SelectItem>
-                      <SelectItem value="Electrical Engineering">Electrical Engineering</SelectItem>
-                      <SelectItem value="CSE">CSE</SelectItem>
-                      <SelectItem value="IT">IT</SelectItem>
-                      <SelectItem value="Electronics & Communication">Electronics & Communication</SelectItem>
-                      <SelectItem value="Engineering Mathematics & Computing (MAC)">Engineering Mathematics & Computing (MAC)</SelectItem>
-                      <SelectItem value="Chemical Engineering">Chemical Engineering</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+               <div className="space-y-2">
+  <Label htmlFor="department_id">Department *</Label>
 
-                <div className="space-y-2">
-                  <Label htmlFor="branch">Branch *</Label>
-                  <Select
-                    value={formData.branch}
-                    onValueChange={(value) => handleSelectChange('branch', value)}
-                  >
-                    <SelectTrigger
-                      id="branch"
-                      disabled={!formData.department || branchOptions.length === 0}
-                    >
-                      <SelectValue placeholder="SELECT YOUR BRANCH" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branchOptions.map(branch => (
-                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+  <Select
+    value={formData.department_id}
+    onValueChange={(value) => handleSelectChange('department_id', value)}
+  >
+    <SelectTrigger id="department_id">
+      <SelectValue placeholder="SELECT YOUR DEPARTMENT" />
+    </SelectTrigger>
 
-            
+    <SelectContent>
+      <SelectItem value="1">AI</SelectItem>
+      <SelectItem value="2">IoT</SelectItem>
+      <SelectItem value="3">CST</SelectItem>
+      <SelectItem value="4">Civil Engineering</SelectItem>
+      <SelectItem value="5">Mechanical Engineering</SelectItem>
+      <SelectItem value="6">Electrical Engineering</SelectItem>
+      <SelectItem value="7">CSE</SelectItem>
+      <SelectItem value="8">IT</SelectItem>
+      <SelectItem value="9">Electronics & Communication</SelectItem>
+      <SelectItem value="10">Engineering Mathematics & Computing (MAC)</SelectItem>
+      <SelectItem value="11">Chemical Engineering</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
 
                 <Button
                   type="submit"

@@ -59,6 +59,7 @@ export default function Login() {
 
         const profile: any = await xanoFetch('/auth/me', { method: 'GET' }, 'auth')
         const role = profile?.role
+        localStorage.setItem('currentUser',JSON.stringify(profile))
         if (role !== activeTab) {
           setError(`This account is registered as a ${role || 'user'}, not a ${activeTab}`)
           clearAuthToken()

@@ -75,26 +75,28 @@ export default function StudentSignUp() {
       }
 
       // Validate all fields
-      if (!formData.fullName || !formData.password || !formData.rollNumber || !formData.department || !formData.academicYear || !formData.semester) {
-        setError('Please fill in all required fields')
-        setLoading(false)
-        return
-      }
-
-      const selectedBranches = departmentBranches[formData.department] || []
-      if (!selectedBranches.includes(formData.branch)) {
-        setError('Please select a valid branch for your department')
-        setLoading(false)
-        return
-      }
+     if (
+  !formData.name ||
+  !formData.email ||
+  !formData.password ||
+  !formData.roll_number ||
+  !formData.department_id ||
+  !formData.branch_id ||
+  !formData.section_id
+) {
+  setError('Please fill in all required fields')
+  setLoading(false)
+  return
+}
 
       // Validate password
-      const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/
-      if (!passwordRegex.test(formData.password)) {
-        setError('Password must be at least 8 characters long and contain letters, numbers, and a special character (!@#$%^&*)')
-        setLoading(false)
-        return
-      }
+     const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/
+
+if (!passwordRegex.test(formData.password)) {
+  setError('Password must be at least 8 characters long and contain letters, numbers, and a special character (!@#$%^&*)')
+  setLoading(false)
+  return
+}
 
       const payload = {
         name: formData.name,
@@ -271,14 +273,14 @@ export default function StudentSignUp() {
                     <SelectTrigger id="department_id">
                       <SelectValue placeholder="SELECT YOUR DEPARTMENT" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Computer Science and Technology">Computer Science and Technology</SelectItem>
-                      <SelectItem value="Artificial Intelligence">Artificial Intelligence</SelectItem>
-                      <SelectItem value="Electrical">Electrical Engineering</SelectItem>
-                      <SelectItem value="Mechanical">Mechanical Engineering</SelectItem>
-                      <SelectItem value="Civil">Civil Engineering</SelectItem>
-                      <SelectItem value="Electronics">Electronics Engineering</SelectItem>
-                    </SelectContent>
+                   <SelectContent>
+  <SelectItem value="1">Computer Science and Technology</SelectItem>
+  <SelectItem value="2">Artificial Intelligence</SelectItem>
+  <SelectItem value="3">Electrical Engineering</SelectItem>
+  <SelectItem value="4">Mechanical Engineering</SelectItem>
+  <SelectItem value="5">Civil Engineering</SelectItem>
+  <SelectItem value="6">Electronics Engineering</SelectItem>
+</SelectContent>
                   </Select>
                 </div>
 

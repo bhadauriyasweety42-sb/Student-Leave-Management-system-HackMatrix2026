@@ -76,19 +76,11 @@ export default function CoordinatorSignUp() {
         setLoading(false)
         return
       }
-
-      const selectedBranches = departmentBranches[formData.department] || []
-      if (!formData.branch) {
-        setError('Please select a branch for your department')
-        setLoading(false)
-        return
-      }
-
-      if (!selectedBranches.includes(formData.branch)) {
-        setError('Please select a valid branch for your department')
-        setLoading(false)
-        return
-      }
+if (!formData.branch_id) {
+  setError('Please select a branch for your department')
+  setLoading(false)
+  return
+}
 
       // Validate password
       const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/
