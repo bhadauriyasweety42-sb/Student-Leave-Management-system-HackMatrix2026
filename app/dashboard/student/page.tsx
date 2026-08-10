@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -10,234 +10,131 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { FileText, LogOut, Plus, CheckCircle2, Clock, XCircle, ArrowLeft } from 'lucide-react'
-import { xanoFetch, clearAuthToken, getAuthToken } from '@/lib/xano'
 import Link from 'next/link'
 
 export default function StudentDashboard() {
   const router = useRouter()
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const [studentData, setStudentData] = useState<any>(null)
   const [requests, setRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [newRequest, setNewRequest] = useState({
     reason: '',
-    leaveType: '',
     numberOfDays: '',
     startDate: '',
     endDate: '',
   })
-  const [attachment, setAttachment] = useState<File | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [fileError, setFileError] = useState('')
   const [showNewRequest, setShowNewRequest] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-
-  function mapStatus(status: string | undefined) {
-    // Normalize to canonical statuses used in UI logic
-    switch (status) {
-      case 'pending_coordinator':
-        return 'pending_coordinator'
-      case 'pending_hod':
-        return 'pending_hod'
-      case 'approved':
-        return 'approved'
-      case 'rejected_by_coordinator':
-      case 'rejected_by_hod':
-        return 'rejected'
-      default:
-        return status || 'pending_coordinator'
-    }
-  }
-
-  function statusLabel(status: string) {
-    switch (status) {
-      case 'pending_coordinator':
-        return 'Pending Coordinator Approval'
-      case 'pending_hod':
-        return 'Pending HOD Approval'
-      case 'approved':
-        return 'Approved'
-      case 'rejected':
-        return 'Rejected'
-      default:
-        return status
-    }
-  }
-
-  function mapLeaveRequest(request: any) {
-    return {
-      ...request,
-      id: request.id ?? request.leave_request_id ?? request.request_id,
-      studentName: request.studentName ?? request.student_name ?? request.name ?? request.user_name,
-      studentEmail: request.studentEmail ?? request.student_email ?? request.email ?? request.user_email,
-      numberOfDays: request.total_days ?? request.totalDays ?? request.numberOfDays ?? request.days ?? 0,
-      startDate: request.from_date ?? request.startDate ?? request.start_date,
-      endDate: request.to_date ?? request.endDate ?? request.to_date ?? request.end_date,
-      createdAt: request.created_at ?? request.createdAt ?? request.created_at ?? new Date().toISOString(),
-      status: mapStatus(request.final_status ?? request.status),
-    }
-  }
-
-  function normalizeLeavesResponse(leavesRes: any) {
-    return Array.isArray(leavesRes)
-      ? leavesRes
-      : Array.isArray(leavesRes?.items)
-        ? leavesRes.items
-        : Array.isArray(leavesRes?.data?.items)
-          ? leavesRes.data.items
-          : Array.isArray(leavesRes?.data)
-            ? leavesRes.data
-            : Array.isArray(leavesRes?.leaves)
-              ? leavesRes.leaves
-              : []
-  }
-
-  async function loadStudentLeaves() {
-    const statuses = ['pending_coordinator', 'pending_hod', 'approved', 'rejected']
-    const leavesResponses = await Promise.all(
-      statuses.map((status) => xanoFetch(`/me?status=${status}`, { method: 'GET' }, 'leave'))
-    )
-
-    const allLeaves = leavesResponses.flatMap((leavesRes: any) => normalizeLeavesResponse(leavesRes))
-    const mappedLeaves = allLeaves.map(mapLeaveRequest)
-    const uniqueLeaves = Array.from(
-      new Map(mappedLeaves.filter((request) => request?.id).map((request) => [request.id, request])).values()
-    )
-    setRequests(uniqueLeaves)
-  }
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [selectedHistoryRequest, setSelectedHistoryRequest] = useState<any>(null)
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
 
   useEffect(() => {
-    const init = async () => {
-      // Ensure token exists
-      const token = getAuthToken()
-      if (!token) {
-        router.push('/auth/login')
-        return
-      }
-
-      try {
-        setLoading(true)
-
-        // Fetch profile
-        const profile: any = await xanoFetch('/auth/me', { method: 'GET' }, 'auth')
-        if (!profile || profile.role !== 'student') {
-          clearAuthToken()
-          router.push('/auth/login')
-          return
-        }
-
-        setStudentData(profile)
-        await loadStudentLeaves()
-      } catch (err: any) {
-        setError(err?.message || 'Failed to load data')
-      } finally {
-        setLoading(false)
-      }
+    const user = localStorage.getItem('currentUser')
+    if (!user || JSON.parse(user).role !== 'student') {
+      router.push('/auth/login')
+      return
     }
 
-    init()
+    setCurrentUser(JSON.parse(user))
+
+    // Fetch student data
+    const userData = localStorage.getItem(JSON.parse(user).email)
+    if (userData) {
+      setStudentData(JSON.parse(userData))
+    }
+
+    // Fetch requests
+    const savedRequests = localStorage.getItem('leaveRequests')
+    if (savedRequests) {
+      const allRequests = JSON.parse(savedRequests)
+      const userRequests = allRequests.filter((req: any) => req.studentEmail === JSON.parse(user).email)
+      setRequests(userRequests)
+    }
+
+    setLoading(false)
   }, [router])
 
   const handleLogout = () => {
-    const doLogout = async () => {
-      try {
-        await xanoFetch('/auth/logout', { method: 'POST' }, 'auth')
-      } catch (err) {
-        // ignore logout errors
-      } finally {
-        clearAuthToken()
-        router.push('/auth/login')
-      }
-    }
-
-    doLogout()
+    localStorage.removeItem('currentUser')
+    router.push('/auth/login')
   }
 
-  const handleNewRequest = async (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null
+
+    if (!file) {
+      setSelectedFile(null)
+      setFileError('')
+      return
+    }
+
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png',
+    ]
+    const allowedExtensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
+    const fileExtension = file.name.split('.').pop()?.toLowerCase() ?? ''
+    const maxSize = 5 * 1024 * 1024
+
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      setSelectedFile(null)
+      setFileError('Please select a PDF, Word, JPG, JPEG, or PNG file.')
+      return
+    }
+
+    if (file.size > maxSize) {
+      setSelectedFile(null)
+      setFileError('File size must be 5 MB or less.')
+      return
+    }
+
+    setSelectedFile(file)
+    setFileError('')
+  }
+
+  const handleNewRequest = (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    console.groupCollapsed('[apply-debug] submitting new leave')
-    console.log('newRequest state:', newRequest)
-    console.log('attachment present:', !!attachment)
-    console.groupEnd()
-    if (!newRequest.startDate || !newRequest.endDate || !newRequest.numberOfDays || !newRequest.reason) {
-      setError('Please fill all required fields')
-      return
+
+    const request = {
+      id: Date.now().toString(),
+      studentEmail: currentUser.email,
+      studentName: studentData?.fullName,
+      reason: newRequest.reason,
+      numberOfDays: parseInt(newRequest.numberOfDays),
+      startDate: newRequest.startDate,
+      endDate: newRequest.endDate,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      coordinatorApproval: null,
+      hodApproval: null,
     }
 
-    // basic date validation
-    if (new Date(newRequest.startDate) > new Date(newRequest.endDate)) {
-      setError('Start date cannot be after end date')
-      return
-    }
+    const savedRequests = localStorage.getItem('leaveRequests') || '[]'
+    const allRequests = JSON.parse(savedRequests)
+    allRequests.push(request)
+    localStorage.setItem('leaveRequests', JSON.stringify(allRequests))
 
-    // validate numberOfDays matches inclusive date range
-    try {
-      const from = new Date(newRequest.startDate)
-      const to = new Date(newRequest.endDate)
-      const diffMs = to.getTime() - from.getTime()
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1
-      const provided = Number(newRequest.numberOfDays)
-      if (!Number.isFinite(provided) || provided <= 0) {
-        setError('Number of days must be a positive number')
-        return
-      }
-      if (provided !== diffDays) {
-        setError(`Number of days (${provided}) does not match selected date range (${diffDays} days)`) 
-        return
-      }
-    } catch (err) {
-      // ignore parse errors — validation above covers most cases
-    }
-
-    setLoading(true)
-    try {
-      const payload = {
-        leave_type: newRequest.leaveType,
-        reason: newRequest.reason,
-        from_date: newRequest.startDate,
-        to_date: newRequest.endDate,
-      }
-
-      const body = attachment
-        ? (() => {
-            const formData = new FormData()
-            formData.append('leave_type', payload.leave_type)
-            formData.append('reason', payload.reason)
-            formData.append('from_date', payload.from_date)
-            formData.append('to_date', payload.to_date)
-            formData.append('attachment', attachment)
-            return formData
-          })()
-        : JSON.stringify(payload)
-
-      await xanoFetch('/apply', {
-        method: 'POST',
-        body,
-      }, 'leave')
-
-      // Refresh leave history after applying a new request
-      await loadStudentLeaves()
-
-      setNewRequest({ reason: '', leaveType: '', numberOfDays: '', startDate: '', endDate: '' })
-      setAttachment(null)
-      setShowNewRequest(false)
-      setSuccess('Leave request submitted successfully and sent to Coordinator.')
-    } catch (err: any) {
-      setError(err?.message || 'Failed to submit request')
-    } finally {
-      setLoading(false)
-    }
+    setRequests([...requests, request])
+    setNewRequest({ reason: '', numberOfDays: '', startDate: '', endDate: '' })
+    setSelectedFile(null)
+    setFileError('')
+    setShowNewRequest(false)
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved':
+      case 'hod_approved':
         return <CheckCircle2 className="w-5 h-5 text-green-600" />
-      case 'pending_hod':
+      case 'coordinator_approved':
         return <Clock className="w-5 h-5 text-yellow-600" />
       case 'rejected':
         return <XCircle className="w-5 h-5 text-red-600" />
-      case 'pending_coordinator':
       default:
         return <Clock className="w-5 h-5 text-blue-600" />
     }
@@ -245,16 +142,97 @@ export default function StudentDashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved':
+      case 'hod_approved':
         return 'bg-green-50 border-green-200'
-      case 'pending_hod':
+      case 'coordinator_approved':
         return 'bg-yellow-50 border-yellow-200'
       case 'rejected':
         return 'bg-red-50 border-red-200'
-      case 'pending_coordinator':
       default:
         return 'bg-blue-50 border-blue-200'
     }
+  }
+
+  const getFinalStatusLabel = (request: any) => {
+    if (request.status === 'hod_approved') return 'Approved'
+    if (request.status === 'coordinator_approved') return 'Pending HOD Approval'
+    if (request.status === 'pending') return 'Pending Coordinator Approval'
+    if (request.status === 'rejected') {
+      if (request.coordinatorApproval?.decision === 'reject') return 'Rejected by Coordinator'
+      if (request.hodApproval?.decision === 'reject') return 'Rejected by HOD'
+      return 'Rejected'
+    }
+    return 'Pending'
+  }
+
+  const getFilteredHistoryRequests = () => {
+    return requests.filter((request) => {
+      if (historyStatusFilter === 'all') return true
+      if (historyStatusFilter === 'pending') {
+        return request.status === 'pending' || request.status === 'coordinator_approved'
+      }
+      if (historyStatusFilter === 'approved') return request.status === 'hod_approved'
+      if (historyStatusFilter === 'rejected') return request.status === 'rejected'
+      return true
+    })
+  }
+
+  const filteredHistoryRequests = getFilteredHistoryRequests()
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'hod_approved') return 'Approved'
+    if (status === 'coordinator_approved') return 'Pending HOD Approval'
+    if (status === 'pending') return 'Pending'
+    if (status === 'rejected') return 'Rejected'
+    return status
+  }
+
+  const getTimelineDot = (state: 'completed' | 'current' | 'rejected' | 'pending' | 'not_reached') => {
+    switch (state) {
+      case 'completed':
+        return <CheckCircle2 className="w-4 h-4 text-green-600" />
+      case 'rejected':
+        return <XCircle className="w-4 h-4 text-red-600" />
+      case 'current':
+      case 'pending':
+        return <Clock className="w-4 h-4 text-blue-600" />
+      default:
+        return <span className="block w-3 h-3 rounded-full border border-gray-300 bg-white" />
+    }
+  }
+
+  const getTimelineState = (request: any) => {
+    type TimelineState = 'completed' | 'current' | 'rejected' | 'pending' | 'not_reached'
+    const coordinatorDecision = request.coordinatorApproval?.decision as string | undefined
+    const hodDecision = request.hodApproval?.decision as string | undefined
+
+    const coordinatorState: TimelineState = coordinatorDecision === 'reject'
+      ? 'rejected'
+      : coordinatorDecision === 'approve'
+      ? 'completed'
+      : 'current'
+
+    const hodReviewState: TimelineState = coordinatorDecision === 'approve'
+      ? request.hodApproval
+        ? 'completed'
+        : 'current'
+      : 'not_reached'
+
+    const hodDecisionState: TimelineState = coordinatorDecision === 'approve'
+      ? request.hodApproval
+        ? hodDecision === 'approve'
+          ? 'completed'
+          : 'rejected'
+        : 'pending'
+      : 'not_reached'
+
+    const finalState: TimelineState = request.status === 'hod_approved'
+      ? 'completed'
+      : request.status === 'rejected'
+      ? 'rejected'
+      : 'current'
+
+    return { coordinatorState, hodReviewState, hodDecisionState, finalState }
   }
 
   if (loading) {
@@ -262,15 +240,15 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 dark:bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-purple-200">
+      <header className="bg-white dark:bg-card border-b border-purple-200 dark:border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-500 rounded-lg flex items-center justify-center">
               <FileText className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">LeaveHub</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground">LeaveHub</h1>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 text-purple-600 hover:text-purple-700 font-semibold">
@@ -279,7 +257,7 @@ export default function StudentDashboard() {
             </Link>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-semibold"
+              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 dark:text-muted-foreground dark:hover:text-foreground font-semibold"
             >
               <LogOut className="w-5 h-5" />
               Logout
@@ -290,34 +268,28 @@ export default function StudentDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {studentData?.fullName || 'Student'}</h2>
-          <p className="text-gray-600">Manage and track your leave requests here</p>
+          <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-foreground mb-2">Welcome, {studentData?.fullName || 'Student'}</h2>
+          <p className="text-gray-600 dark:text-muted-foreground">Manage and track your leave requests here</p>
         </div>
-
-        {success && (
-          <div className="mb-4 p-3 bg-green-50 text-green-800 rounded">
-            {success}
-          </div>
-        )}
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Requests</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-muted-foreground">Total Requests</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{requests.length}</div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-foreground">{requests.length}</div>
             </CardContent>
           </Card>
 
-          <Card>
+              <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-muted-foreground">Pending</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-600">
-                {requests.filter((r) => r.status === 'pending_coordinator' || r.status === 'pending_hod').length}
+                {requests.filter(r => r.status === 'pending').length}
               </div>
             </CardContent>
           </Card>
@@ -328,7 +300,7 @@ export default function StudentDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-yellow-600">
-                {requests.filter((r) => r.status === 'pending_hod').length}
+                {requests.filter(r => r.status === 'coordinator_approved').length}
               </div>
             </CardContent>
           </Card>
@@ -339,22 +311,26 @@ export default function StudentDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">
-                {requests.filter((r) => r.status === 'approved').length}
+                {requests.filter(r => r.status === 'hod_approved').length}
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="requests" className="w-full">
+          <Tabs defaultValue="requests" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="requests">My Requests</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-2xl font-bold text-gray-900">Leave Requests</h3>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-foreground">Leave Dashboard</h3>
+                <p className="text-sm text-gray-600 dark:text-muted-foreground">Track your leave overview and submit new requests.</p>
+              </div>
               <Dialog open={showNewRequest} onOpenChange={setShowNewRequest}>
                 <DialogTrigger asChild>
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
@@ -369,12 +345,6 @@ export default function StudentDashboard() {
                   </DialogHeader>
 
                   <form onSubmit={handleNewRequest} className="space-y-4">
-                    {error && (
-                      <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
-                        {error}
-                      </div>
-                    )}
-                    
                     <div className="space-y-2">
                       <Label htmlFor="reason">Reason for Leave *</Label>
                       <Input
@@ -383,26 +353,6 @@ export default function StudentDashboard() {
                         value={newRequest.reason}
                         onChange={(e) => setNewRequest({ ...newRequest, reason: e.target.value })}
                         required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="leaveType">Leave Type *</Label>
-                      <Input
-                        id="leaveType"
-                        placeholder="Sick Leave, Casual Leave, etc."
-                        value={newRequest.leaveType}
-                        onChange={(e) => setNewRequest({ ...newRequest, leaveType: e.target.value })}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="attachment">Attachment (optional)</Label>
-                      <Input
-                        id="attachment"
-                        type="file"
-                        onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
                       />
                     </div>
 
@@ -441,6 +391,28 @@ export default function StudentDashboard() {
                       />
                     </div>
 
+                    <div className="space-y-2">
+                      <Label htmlFor="supportingDocument">Supporting Document</Label>
+                      <Input
+                        id="supportingDocument"
+                        type="file"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChange}
+                      />
+                      <p className="text-sm text-gray-500 dark:text-muted-foreground">
+                        Optional: Upload a medical certificate or other supporting document. PDF, Word, JPG, JPEG, PNG — Max 5 MB.
+                      </p>
+                      {selectedFile && (
+                        <p className="text-sm text-gray-700 dark:text-muted-foreground flex items-center gap-2">
+                          <span>📎</span>
+                          {selectedFile.name}
+                        </p>
+                      )}
+                      {fileError && (
+                        <p className="text-sm text-red-600">{fileError}</p>
+                      )}
+                    </div>
+
                     <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                       Submit Request
                     </Button>
@@ -449,57 +421,253 @@ export default function StudentDashboard() {
               </Dialog>
             </div>
 
-            {requests.length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-muted-foreground">Total Requests</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900 dark:text-foreground">{requests.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-muted-foreground">Pending</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-blue-600">
+                    {requests.filter((r) => r.status === 'pending' || r.status === 'coordinator_approved').length}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-muted-foreground">Approved</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-600">
+                    {requests.filter((r) => r.status === 'hod_approved').length}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-foreground">History</h3>
+                <p className="text-sm text-gray-600 dark:text-muted-foreground">Review your past leave requests and their current status.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {['all', 'pending', 'approved', 'rejected'].map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setHistoryStatusFilter(status as typeof historyStatusFilter)}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition ${historyStatusFilter === status ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-card dark:text-muted-foreground dark:border dark:border-border'}`}
+                  >
+                    {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filteredHistoryRequests.length === 0 ? (
               <Card className="text-center py-12">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">No leave requests yet</p>
-                <Button
-                  onClick={() => setShowNewRequest(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Create Your First Request
-                </Button>
+                <FileText className="w-12 h-12 text-gray-400 dark:text-muted-foreground mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-muted-foreground mb-4">No history found for the selected filter.</p>
               </Card>
             ) : (
               <div className="space-y-4">
-                {requests.map((request) => (
-                  <Card key={request.id} className={`border ${getStatusColor(request.status)}`}>
+                {filteredHistoryRequests.map((request) => (
+                  <Card key={request.id} className={`border ${getStatusColor(request.status)} dark:bg-card dark:border-border`}>
                     <CardHeader>
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             {getStatusIcon(request.status)}
-                            <CardTitle className="text-lg">
-                              {statusLabel(request.status)}
+                            <CardTitle className="text-lg capitalize dark:text-foreground">
+                              {getStatusLabel(request.status)}
                             </CardTitle>
                           </div>
                           <CardDescription>{request.reason}</CardDescription>
                         </div>
-                        <span className="text-sm font-semibold text-gray-600">
+                        <span className="text-sm font-semibold text-gray-600 dark:text-muted-foreground">
                           {request.numberOfDays} days
                         </span>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 text-sm text-gray-600 dark:text-muted-foreground">
                         <div>
-                          <p className="text-gray-600">Start Date</p>
-                          <p className="font-semibold">{new Date(request.startDate).toLocaleDateString()}</p>
+                          <p className="font-semibold text-gray-900 dark:text-foreground">Start Date</p>
+                          <p>{new Date(request.startDate).toLocaleDateString()}</p>
                         </div>
                         <div>
-                          <p className="text-gray-600">End Date</p>
-                          <p className="font-semibold">{new Date(request.endDate).toLocaleDateString()}</p>
+                          <p className="font-semibold text-gray-900 dark:text-foreground">End Date</p>
+                          <p>{new Date(request.endDate).toLocaleDateString()}</p>
                         </div>
                         <div>
-                          <p className="text-gray-600">Submitted</p>
-                          <p className="font-semibold">{new Date(request.createdAt).toLocaleDateString()}</p>
+                          <p className="font-semibold text-gray-900 dark:text-foreground">Submitted</p>
+                          <p>{new Date(request.createdAt).toLocaleDateString()}</p>
                         </div>
+                      </div>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-sm text-gray-600 dark:text-muted-foreground">
+                          <p>Current Status: <span className="font-semibold text-gray-900 dark:text-foreground">{getFinalStatusLabel(request)}</span></p>
+                          <p>Coordinator Decision: <span className="font-semibold text-gray-900 dark:text-foreground">{request.coordinatorApproval?.decision === 'approve' ? 'Approved' : request.coordinatorApproval?.decision === 'reject' ? 'Rejected' : 'Pending'}</span></p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedHistoryRequest(request)
+                            setHistoryDialogOpen(true)
+                          }}
+                        >
+                          View
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
             )}
+
+            <Dialog open={historyDialogOpen} onOpenChange={(open) => {
+              setHistoryDialogOpen(open)
+              if (!open) setSelectedHistoryRequest(null)
+            }}>
+              <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle>Request Details</DialogTitle>
+                  <DialogDescription>Review the selected leave request details and timeline.</DialogDescription>
+                </DialogHeader>
+                {selectedHistoryRequest ? (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-gray-600 dark:text-muted-foreground">Student Name</Label>
+                        <p className="font-semibold text-gray-900 dark:text-foreground">{selectedHistoryRequest.studentName}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600 dark:text-muted-foreground">Leave Reason</Label>
+                        <p className="font-semibold text-gray-900 dark:text-foreground">{selectedHistoryRequest.reason}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600 dark:text-muted-foreground">Start Date</Label>
+                        <p className="font-semibold text-gray-900 dark:text-foreground">{new Date(selectedHistoryRequest.startDate).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600 dark:text-muted-foreground">End Date</Label>
+                        <p className="font-semibold text-gray-900 dark:text-foreground">{new Date(selectedHistoryRequest.endDate).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-lg bg-gray-50 dark:bg-card border border-gray-200 dark:border-border">
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-foreground mb-3">Processing Timeline</h4>
+                      <div className="space-y-5 border-l border-gray-200 dark:border-border pl-5">
+                        <div className="relative">
+                          <span className="absolute -left-5 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-[color:var(--chart-1)]">
+                            <CheckCircle2 className="w-3 h-3" />
+                          </span>
+                          <div>
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-foreground">Application Submitted</p>
+                              {selectedHistoryRequest.createdAt && (
+                                <span className="text-xs text-gray-500 dark:text-muted-foreground">{new Date(selectedHistoryRequest.createdAt).toLocaleString()}</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-muted-foreground">Your leave application was submitted.</p>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <span className="absolute -left-5 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-gray-500">
+                            {getTimelineDot(getTimelineState(selectedHistoryRequest).coordinatorState)}
+                          </span>
+                          <div>
+                            <div className="flex items-center justify-between gap-3">
+                              <p className={`text-sm font-semibold ${getTimelineState(selectedHistoryRequest).coordinatorState === 'rejected' ? 'text-red-700' : getTimelineState(selectedHistoryRequest).coordinatorState === 'completed' ? 'text-green-700' : 'text-gray-900'}`}>
+                                Coordinator Review
+                              </p>
+                              <span className="text-xs text-gray-500">
+                                {getTimelineState(selectedHistoryRequest).coordinatorState === 'completed'
+                                  ? 'Approved'
+                                  : getTimelineState(selectedHistoryRequest).coordinatorState === 'rejected'
+                                  ? 'Rejected'
+                                  : 'Pending'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              {getTimelineState(selectedHistoryRequest).coordinatorState === 'rejected'
+                                ? 'The coordinator has rejected this request.'
+                                : 'Awaiting coordinator decision.'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <span className="absolute -left-5 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-gray-500">
+                            {getTimelineDot(getTimelineState(selectedHistoryRequest).hodReviewState)}
+                          </span>
+                          <div>
+                            <div className="flex items-center justify-between gap-3">
+                              <p className={`text-sm font-semibold ${getTimelineState(selectedHistoryRequest).hodReviewState === 'completed' ? 'text-green-700' : getTimelineState(selectedHistoryRequest).hodReviewState === 'current' ? 'text-blue-700' : 'text-gray-900'}`}>
+                                HOD Review
+                              </p>
+                              <span className="text-xs text-gray-500">
+                                {getTimelineState(selectedHistoryRequest).hodReviewState === 'completed'
+                                  ? 'Completed'
+                                  : getTimelineState(selectedHistoryRequest).hodReviewState === 'current'
+                                  ? 'Pending'
+                                  : 'Locked'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              {getTimelineState(selectedHistoryRequest).hodReviewState === 'current'
+                                ? 'Awaiting HOD review.'
+                                : getTimelineState(selectedHistoryRequest).hodReviewState === 'not_reached'
+                                ? 'Coordinator approval required first.'
+                                : 'HOD review is complete.'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <span className="absolute -left-5 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-gray-500">
+                            {getTimelineDot(getTimelineState(selectedHistoryRequest).hodDecisionState)}
+                          </span>
+                          <div>
+                            <div className="flex items-center justify-between gap-3">
+                              <p className={`text-sm font-semibold ${getTimelineState(selectedHistoryRequest).hodDecisionState === 'rejected' ? 'text-red-700' : getTimelineState(selectedHistoryRequest).hodDecisionState === 'completed' ? 'text-green-700' : 'text-gray-900'}`}>
+                                HOD Decision
+                              </p>
+                              <span className="text-xs text-gray-500">
+                                {getTimelineState(selectedHistoryRequest).hodDecisionState === 'completed'
+                                  ? 'Approved'
+                                  : getTimelineState(selectedHistoryRequest).hodDecisionState === 'rejected'
+                                  ? 'Rejected'
+                                  : getTimelineState(selectedHistoryRequest).hodDecisionState === 'pending'
+                                  ? 'Pending'
+                                  : 'N/A'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              {getTimelineState(selectedHistoryRequest).hodDecisionState === 'completed'
+                                ? 'HOD has approved the request.'
+                                : getTimelineState(selectedHistoryRequest).hodDecisionState === 'rejected'
+                                ? 'HOD has rejected the request.'
+                                : getTimelineState(selectedHistoryRequest).hodDecisionState === 'pending'
+                                ? 'Waiting for HOD decision.'
+                                : 'HOD decision has not been reached.'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 dark:text-muted-foreground">Select a request to see details.</p>
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="profile">
