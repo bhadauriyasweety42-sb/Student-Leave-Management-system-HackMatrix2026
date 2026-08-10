@@ -13,14 +13,12 @@ import { FileText, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 
 export default function HODSignUp() {
   const router = useRouter()
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    department_id: '',
-    branch_id: '',
-    section_id: '',
-  })
+const [formData, setFormData] = useState({
+  name: '',
+  email: '',
+  password: '',
+  department_id: '',
+})
   const[showPassword, setShowPassword] = useState(false)
 
   const [error, setError] = useState('')
@@ -50,7 +48,7 @@ export default function HODSignUp() {
       }
 
       // Validate all fields
-      if (!formData.name || !formData.email || !formData.password || !formData.department_id || !formData.branch_id || !formData.section_id) {
+      if (!formData.name || !formData.email || !formData.password || !formData.department_id)  {
         setError('Please fill in all required fields')
         setLoading(false)
         return
@@ -65,14 +63,12 @@ export default function HODSignUp() {
       }
 
       const payload = {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        role: 'hod',
-        department_id: Number(formData.department_id),
-        branch_id: Number(formData.branch_id),
-        section_id: Number(formData.section_id),
-      }
+  name: formData.name,
+  email: formData.email,
+  password: formData.password,
+  role: 'hod',
+  department_id: Number(formData.department_id),
+}
 
       const response: any = await xanoFetch('/auth/signup', {
         method: 'POST',
@@ -237,37 +233,7 @@ export default function HODSignUp() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="branch_id">Branch *</Label>
-                  <Select value={formData.branch_id} onValueChange={(value) => handleSelectChange('branch_id', value)}>
-                    <SelectTrigger id="branch_id">
-                      <SelectValue placeholder="SELECT YOUR BRANCH" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">Computer Science</SelectItem>
-                      <SelectItem value="2">Artificial Intelligence</SelectItem>
-                      <SelectItem value="3">Electrical</SelectItem>
-                      <SelectItem value="4">Mechanical</SelectItem>
-                      <SelectItem value="5">Civil</SelectItem>
-                      <SelectItem value="6">Electronics</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="section_id">Section *</Label>
-                  <Select value={formData.section_id} onValueChange={(value) => handleSelectChange('section_id', value)}>
-                    <SelectTrigger id="section_id">
-                      <SelectValue placeholder="SELECT YOUR SECTION" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">A</SelectItem>
-                      <SelectItem value="2">B</SelectItem>
-                      <SelectItem value="3">C</SelectItem>
-                      <SelectItem value="4">D</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            
 
                 <Button
                   type="submit"
