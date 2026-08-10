@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FileText, ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { xanoFetch, setAuthToken, clearAuthToken } from '@/lib/xano'
 
 export default function Login() {
   const router = useRouter()
@@ -31,54 +32,47 @@ export default function Login() {
         setLoading(false)
         return
       }
+      // Use Xano login for all roles
+      try {
+        const response: any = await xanoFetch('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        }, 'auth')
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+        const parsedResponse = typeof response === 'string'
+          ? (() => {
+              try { return JSON.parse(response) } catch { return null }
+            })()
+          : response
 
-      // Get user data from localStorage
-      const userDataStr = localStorage.getItem(email)
-      
-      if (!userDataStr) {
-        setError('Invalid email or password')
+        const authToken = parsedResponse?.authToken
+          ?? parsedResponse?.data?.authToken
+          ?? parsedResponse?.token
+          ?? parsedResponse?.data?.token
+          ?? parsedResponse?.access_token
+          ?? parsedResponse?.data?.access_token
+        if (!authToken) {
+          throw new Error('Invalid login response')
+        }
+
+        setAuthToken(authToken)
+
+        const profile: any = await xanoFetch('/auth/me', { method: 'GET' }, 'auth')
+        const role = profile?.role
+        if (role !== activeTab) {
+          setError(`This account is registered as a ${role || 'user'}, not a ${activeTab}`)
+          clearAuthToken()
+          setLoading(false)
+          return
+        }
+
+        if (activeTab === 'student') router.push('/dashboard/student')
+        else if (activeTab === 'coordinator') router.push('/dashboard/coordinator')
+        else if (activeTab === 'hod') router.push('/dashboard/hod')
+      } catch (err: any) {
+        setError(err?.message || 'Login failed')
         setLoading(false)
         return
-      }
-
-      const userData = JSON.parse(userDataStr)
-
-      // Verify password matches
-      if (userData.password !== password) {
-        setError('Invalid email or password')
-        setLoading(false)
-        return
-      }
-
-      // Check if user role matches selected role
-      if (userData.role !== activeTab) {
-        setError(`This account is registered as a ${userData.role}, not a ${activeTab}`)
-        setLoading(false)
-        return
-      }
-
-      // Create session with user data
-      localStorage.setItem('currentUser', JSON.stringify({ 
-        email, 
-        role: activeTab,
-        fullName: userData.fullName,
-        rollNumber: userData.rollNumber,
-        department: userData.department,
-        academicYear: userData.academicYear,
-        semester: userData.semester,
-        phoneNumber: userData.phoneNumber
-      }))
-
-      // Redirect based on role
-      if (activeTab === 'student') {
-        router.push('/dashboard/student')
-      } else if (activeTab === 'coordinator') {
-        router.push('/dashboard/coordinator')
-      } else if (activeTab === 'hod') {
-        router.push('/dashboard/hod')
       }
     } catch (err) {
       setError('An error occurred. Please try again.')

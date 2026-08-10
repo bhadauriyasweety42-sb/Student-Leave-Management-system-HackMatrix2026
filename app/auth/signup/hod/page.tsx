@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { xanoFetch, setAuthToken } from '@/lib/xano'
 import { FileText, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 
 export default function HODSignUp() {
@@ -70,7 +71,7 @@ export default function HODSignUp() {
       }
 
       // Validate all fields
-      if (!formData.fullName || !formData.password || !formData.department) {
+      if (!formData.name || !formData.email || !formData.password || !formData.department_id)  {
         setError('Please fill in all required fields')
         setLoading(false)
         return
@@ -97,23 +98,47 @@ export default function HODSignUp() {
         return
       }
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const payload = {
+  name: formData.name,
+  email: formData.email,
+  password: formData.password,
+  role: 'hod',
+  department_id: Number(formData.department_id),
+}
 
-      // Save HOD data to localStorage
-      localStorage.setItem(formData.email, JSON.stringify({
-        ...formData,
-        role: 'hod'
-      }))
+      const response: any = await xanoFetch('/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }, 'auth')
+
+      const parsedResponse = typeof response === 'string'
+        ? (() => {
+            try { return JSON.parse(response) } catch { return null }
+          })()
+        : response
+
+      const authToken = parsedResponse?.authToken
+        ?? parsedResponse?.data?.authToken
+        ?? parsedResponse?.token
+        ?? parsedResponse?.data?.token
+        ?? parsedResponse?.access_token
+        ?? parsedResponse?.data?.access_token
+
+      if (authToken) {
+        setAuthToken(authToken)
+        const profile: any = await xanoFetch('/auth/me', { method: 'GET' }, 'auth')
+        if (profile?.role === 'hod') {
+          router.push('/dashboard/hod')
+          return
+        }
+      }
 
       setSuccess(true)
-      
-      // Redirect to login after 2 seconds
       setTimeout(() => {
         router.push('/auth/login')
       }, 2000)
-    } catch (err) {
-      setError('An error occurred. Please try again.')
+    } catch (err: any) {
+      setError(err?.message || 'Signup failed')
     } finally {
       setLoading(false)
     }
@@ -168,13 +193,13 @@ export default function HODSignUp() {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Label htmlFor="name">Full Name *</Label>
                   <Input
-                    id="fullName"
-                    name="fullName"
+                    id="name"
+                    name="name"
                     type="text"
                     placeholder="ENTER YOUR FULL NAME"
-                    value={formData.fullName}
+                    value={formData.name}
                     onChange={handleChange}
                     required
                   />
@@ -228,21 +253,9 @@ export default function HODSignUp() {
 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phoneNumber">Phone Number</Label>
-                  <Input
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    type="tel"
-                    placeholder="ENTER YOUR PHONE NUMBER"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department *</Label>
-                  <Select value={formData.department} onValueChange={(value) => handleSelectChange('department', value)}>
-                    <SelectTrigger id="department">
+                  <Label htmlFor="department_id">Department *</Label>
+                  <Select value={formData.department_id} onValueChange={(value) => handleSelectChange('department_id', value)}>
+                    <SelectTrigger id="department_id">
                       <SelectValue placeholder="SELECT YOUR DEPARTMENT" />
                     </SelectTrigger>
                     <SelectContent>
@@ -280,6 +293,8 @@ export default function HODSignUp() {
                     </SelectContent>
                   </Select>
                 </div>
+
+            
 
                 <Button
                   type="submit"
