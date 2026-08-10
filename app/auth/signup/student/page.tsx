@@ -34,19 +34,10 @@ export default function StudentSignUp() {
     name: '',
     email: '',
     password: '',
-<<<<<<< HEAD
     roll_number: '',
     department_id: '',
     branch_id: '',
     section_id: '',
-=======
-    phoneNumber: '',
-    rollNumber: '',
-    department: '',
-    branch: '',
-    academicYear: '',
-    semester: '',
->>>>>>> origin/main
   })
   const [showPassword, setShowPassword] = useState(false)
 
@@ -84,11 +75,7 @@ export default function StudentSignUp() {
       }
 
       // Validate all fields
-<<<<<<< HEAD
-      if (!formData.name || !formData.password || !formData.roll_number || !formData.department_id || !formData.branch_id || !formData.section_id) {
-=======
-      if (!formData.fullName || !formData.password || !formData.rollNumber || !formData.department || !formData.branch || !formData.academicYear || !formData.semester) {
->>>>>>> origin/main
+      if (!formData.fullName || !formData.password || !formData.rollNumber || !formData.department || !formData.academicYear || !formData.semester) {
         setError('Please fill in all required fields')
         setLoading(false)
         return
@@ -285,48 +272,12 @@ export default function StudentSignUp() {
                       <SelectValue placeholder="SELECT YOUR DEPARTMENT" />
                     </SelectTrigger>
                     <SelectContent>
-<<<<<<< HEAD
-                      <SelectItem value="1">Computer Science and Technology</SelectItem>
-                      <SelectItem value="2">Artificial Intelligence</SelectItem>
-                      <SelectItem value="3">Electrical Engineering</SelectItem>
-                      <SelectItem value="4">Mechanical Engineering</SelectItem>
-                      <SelectItem value="5">Civil Engineering</SelectItem>
-                      <SelectItem value="6">Electronics Engineering</SelectItem>
-=======
-                      <SelectItem value="AI">AI</SelectItem>
-                      <SelectItem value="Artificial Intelligence">Artificial Intelligence</SelectItem>
-                      <SelectItem value="IoT">IoT</SelectItem>
-                      <SelectItem value="CST">CST</SelectItem>
                       <SelectItem value="Computer Science and Technology">Computer Science and Technology</SelectItem>
-                      <SelectItem value="Civil Engineering">Civil Engineering</SelectItem>
-                      <SelectItem value="Mechanical Engineering">Mechanical Engineering</SelectItem>
-                      <SelectItem value="Electrical Engineering">Electrical Engineering</SelectItem>
-                      <SelectItem value="CSE">CSE</SelectItem>
-                      <SelectItem value="IT">IT</SelectItem>
-                      <SelectItem value="Electronics & Communication">Electronics & Communication</SelectItem>
-                      <SelectItem value="Engineering Mathematics & Computing (MAC)">Engineering Mathematics & Computing (MAC)</SelectItem>
-                      <SelectItem value="Chemical Engineering">Chemical Engineering</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="branch">Branch *</Label>
-                  <Select
-                    value={formData.branch}
-                    onValueChange={(value) => handleSelectChange('branch', value)}
-                  >
-                    <SelectTrigger
-                      id="branch"
-                      disabled={!formData.department || branchOptions.length === 0}
-                    >
-                      <SelectValue placeholder="SELECT YOUR BRANCH" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branchOptions.map(branch => (
-                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
-                      ))}
->>>>>>> origin/main
+                      <SelectItem value="Artificial Intelligence">Artificial Intelligence</SelectItem>
+                      <SelectItem value="Electrical">Electrical Engineering</SelectItem>
+                      <SelectItem value="Mechanical">Mechanical Engineering</SelectItem>
+                      <SelectItem value="Civil">Civil Engineering</SelectItem>
+                      <SelectItem value="Electronics">Electronics Engineering</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
